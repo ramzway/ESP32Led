@@ -26,12 +26,17 @@ int press_detect() {
     start_time = millis();
   }
 
-  // check to see if you just pressed the button
-  // (i.e. the input went from LOW to HIGH), and you've waited long enough
-  // since the last press to ignore any noise:
+  // Maximum press duration (5 seconds)
+  const unsigned long MAX_PRESS_DURATION = 5000;
 
   while (1) {
     delay(debounceDelay);
+    // Check for timeout
+    if (millis() - start_time > MAX_PRESS_DURATION) {
+      Serial.println("Button press timeout");
+      return 0;
+    }
+    
     // whatever the reading is at, it's been there for longer than the debounce
     // delay, so take it as the actual current state:
     if (digitalRead(buttonPin) == 0) {
