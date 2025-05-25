@@ -13,6 +13,8 @@ unsigned long debounceDelay = 50;    // the debounce time; increase if the outpu
 unsigned long long_press = 1000;
 
 unsigned int intensity = 0;  // Brightness.
+bool isLightOn = false;     // Track if light is on
+int brightnessLevel = 0;    // Track current brightness level (0-4)
 
 int press_detect() {
   // Debounce detect, returns 2 for long press and 1 for short press, 0 if none.
@@ -62,12 +64,31 @@ void setup() {
 void loop() {
   int button_press = press_detect();
   if (button_press == 2) {      // long press
-    Serial.println("Writing Low");
-    digitalWrite(ledPin, HIGH);  // Turn it off.
-    intensity = 255;
+    Serial.println("Turning light off");
+    digitalWrite(ledPin, LOW);  // Turn it off
+    intensity = 0;
+    isLightOn = false;
+    brightnessLevel = 0;
   } else if (button_press == 1) {
-    Serial.println("Writing Lower intensity");
-    intensity = intensity - 256 / 4;
+    if (!isLightOn) {
+      // First press - start at 75%
+      intensity = 192;  // 75% of 255
+      brightnessLevel = 3;
+      isLightOn = true;
+      Serial.println("First press - 75% brightness");
+    } else {
+      // Cycle through brightness levels
+      brightnessLevel = (brightnessLevel + 1) % 5;
+      switch (brightnessLevel) {
+        case 0: intensity = 64;  break;  // 25%
+        case 1: intensity = 128; break;  // 50%
+        case 2: intensity = 192; break;  // 75%
+        case 3: intensity = 255; break;  // 100%
+        case 4: intensity = 64;  break;  // Back to 25%
+      }
+      Serial.print("Brightness level: ");
+      Serial.println(brightnessLevel);
+    }
     analogWrite(ledPin, intensity);
   }
 }
