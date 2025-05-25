@@ -1,84 +1,68 @@
-// ESP32 Touch Sensor and LED Toggle Project
-// When the touch sensor (aluminum foil) is touched, the LED will toggle
+const int buttonPin = D0;        // the number of the pushbutton pin
+const int ledPin = LED_BUILTIN;  // the number of the LED pin
 
-// Define pins
-const int LED_PIN = 2;     // Built-in LED on most ESP32 Dev boards
-const int TOUCH_PIN = T0;  // GPIO 4 (Touch0) - Connect aluminum foil here
+// Variables will change:
+int ledState = HIGH;        // the current state of the output pin
+int buttonState;            // the current reading from the input pin
+int lastButtonState = LOW;  // the previous reading from the input pin
 
-// Variables to handle touch detection and LED state
-bool ledState = false;
-bool lastTouchState = false;
-bool currentTouchState = false;
+// the following variables are unsigned longs because the time, measured in
+// milliseconds, will quickly become a bigger number than can be stored in an int.
+unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
+unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
+unsigned long long_press = 1000;
 
-// Debounce variables
-unsigned long lastDebounceTime = 0;
-unsigned long debounceDelay = 200;    // Adjust this value to change debounce sensitivity
+unsigned int intensity = 0;  // Brightness.
 
-// Threshold for touch detection - may need adjustment based on your setup
-const int TOUCH_THRESHOLD = 40;
-
-// Variables for touch reading stability
-const int NUM_READINGS = 5;
-int touchReadings[5] = {0, 0, 0, 0, 0};
-int readIndex = 0;
-
-void setup() {
-  // Initialize serial communication for debugging
-  Serial.begin(115200);
-  
-  // Configure LED pin as output
-  pinMode(LED_PIN, OUTPUT);
-  digitalWrite(LED_PIN, ledState);
-}
-
-// Function to get stable touch reading
-int getStableTouchReading() {
-  // Add new reading
-  touchReadings[readIndex] = touchRead(TOUCH_PIN);
-  readIndex = (readIndex + 1) % NUM_READINGS;
-  
-  // Calculate average
-  int sum = 0;
-  for (int i = 0; i < NUM_READINGS; i++) {
-    sum += touchReadings[i];
+int press_detect() {
+  // Debounce detect, returns 2 for long press and 1 for short press, 0 if none.
+  // Captive when pressed.
+  // read the state of the switch into a local variable:
+  unsigned long start_time;
+  if (digitalRead(buttonPin) == 0) {
+    delay(debounceDelay);
+    return 0;
+  } else {
+    start_time = millis();
   }
-  return sum / NUM_READINGS;
-}
 
-void loop() {
-  // Get stable touch reading
-  int touchValue = getStableTouchReading();
-  
-  // Debug output
-  Serial.print("Touch value: ");
-  Serial.println(touchValue);
-  
-  // Determine touch state based on threshold
-  bool newTouchState = (touchValue < TOUCH_THRESHOLD);
-  
-  // Check if touch state has changed
-  if (newTouchState != lastTouchState) {
-    // Reset the debouncing timer
-    lastDebounceTime = millis();
-  }
-  
-  // Check if enough time has passed since last state change
-  if ((millis() - lastDebounceTime) > debounceDelay) {
-    // If touch state has changed and debounce period passed
-    if (newTouchState != currentTouchState) {
-      currentTouchState = newTouchState;
-      
-      // Only toggle LED if touch is detected (pressed, not released)
-      if (currentTouchState) {
-        ledState = !ledState;
-        digitalWrite(LED_PIN, ledState);
+  // check to see if you just pressed the button
+  // (i.e. the input went from LOW to HIGH), and you've waited long enough
+  // since the last press to ignore any noise:
+
+  while (1) {
+    delay(debounceDelay);
+    // whatever the reading is at, it's been there for longer than the debounce
+    // delay, so take it as the actual current state:
+    if (digitalRead(buttonPin) == 0) {
+      if (millis() - start_time > long_press) {
+        Serial.println("Long press \n");
+        return 2;
+      } else {
+        Serial.println("Short press \n");
+        return 1;
       }
     }
   }
-  
-  // Save the last touch state
-  lastTouchState = newTouchState;
-  
-  // Small delay to stabilize readings
-  delay(20);  // Reduced delay since we're using proper debouncing now
+}
+
+void setup() {
+  pinMode(buttonPin, INPUT);
+  pinMode(ledPin, OUTPUT);
+
+  Serial.begin(9600);
+  Serial.println("Setup complete");
+}
+
+void loop() {
+  int button_press = press_detect();
+  if (button_press == 2) {      // long press
+    Serial.println("Writing Low");
+    digitalWrite(ledPin, HIGH);  // Turn it off.
+    intensity = 255;
+  } else if (button_press == 1) {
+    Serial.println("Writing Lower intensity");
+    intensity = intensity - 256 / 4;
+    analogWrite(ledPin, intensity);
+  }
 }
