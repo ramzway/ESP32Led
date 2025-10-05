@@ -1,5 +1,10 @@
 # ESP32 Touch Sensor LED Toggle
 
+## Worklog
+
+Oct 5th 2025: Downloaded the code onto ESP32 DEVKITV1 using the mac studio, Arduino IDE.
+pull from github before you do anything.
+
 This project uses an ESP32's capacitive touch sensing capability to toggle an LED when a touch sensor (aluminum foil) is touched.
 
 ## Hardware Requirements
